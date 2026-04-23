@@ -18,11 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "variable.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include "variable.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,8 +44,6 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
-TIM_HandleTypeDef htim3;
-
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -55,7 +54,6 @@ UART_HandleTypeDef huart1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -63,31 +61,38 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t dato;
-volatile uint8_t flag = 0;
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-	if(hadc->Instance == ADC1){
-		dato = HAL_ADC_GetValue(hadc);
-		flag = 1;
-	}
-}
 
+
+static float valor_anterior = 0;
 
 void imprimir_estado(var_t* variable){
+	  char cadena[50];
 	  switch(var_get_state(variable)){
 	  case VAR_NORMAL:
-		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_NORMAL\r\n", 12, 100);
+		  if ( (variable->valor < 0.95f*valor_anterior) || (variable->valor > 1.05f*valor_anterior) ){
+		  sprintf(cadena, "Valor: %d, ESTADO NORMAL\r\n", (int)variable->valor);
+		  HAL_UART_Transmit(&huart1, (uint8_t*)cadena, strlen(cadena), 100);
+		  valor_anterior = variable->valor;
+		  }
 		  break;
+
 	  case VAR_LO:
-		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_LO\r\n", 8, 100);
+		  sprintf(cadena, "Valor: %d, ALARMA BAJA\r\n", (int)variable->valor);
+		  HAL_UART_Transmit(&huart1, (uint8_t*)cadena, strlen(cadena), 100);
+		  valor_anterior = variable->valor;
 		  break;
-	  case VAR_HI:
-		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_HI\r\n", 8, 100);
+
+	  case VAR_HI:sprintf(cadena, "Valor: %d, ALARMA ALTA\r\n", (int)variable->valor);
+		  HAL_UART_Transmit(&huart1, (uint8_t*)cadena, strlen(cadena), 100);
+		  valor_anterior = variable->valor;
 		  break;
+
 	  case VAR_WAITING_ACK:
-		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_WAITING_ACK\r\n", 17, 100);
+		 sprintf(cadena, "Valor: %d, RECONOCIMIENTO DE ALARMA PENDIENTE\r\n", (int)variable->valor);
+		  HAL_UART_Transmit(&huart1, (uint8_t*)cadena, strlen(cadena), 100);
+		  valor_anterior = variable->valor;
 		  break;
+
 	  default: break;
 	  }
 }
@@ -123,21 +128,19 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ADC1_Init();
-  MX_TIM3_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   //HAL_ADC_Start_IT(&hadc1);
   //HAL_TIM_Base_Start(&htim3);
-  char buffer[10];
   var_t v;
   var_init(&v, 3000, 4000, 1000);
 
   uint32_t lastTick1 = 0;
   uint32_t lastTick2 = 0;
   uint32_t lastTick3 = 0;
-  uint32_t periodo1 = 0;
-  uint32_t periodo2 = 0;
-  uint32_t periodo3 = 0;
+  uint32_t periodo1 = 100;
+  uint32_t periodo2 = 1000;
+  uint32_t periodo3 = 20;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -147,23 +150,24 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if (flag == 1){
-		  sprintf(buffer, "%d\r\n", dato);
-		  HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 100);
-		  flag = 0;
-	  }
 
 	  if(HAL_GetTick()-lastTick1>=periodo1){
-	  lastTick1=HAL_GetTick();
-	  //tarea1(&v);
+ 		  lastTick1=HAL_GetTick();
+		  HAL_ADC_Start(&hadc1);
+		  if (HAL_ADC_PollForConversion(&hadc1, 1) == HAL_OK) {
+			  var_set_val(&v, (float)HAL_ADC_GetValue(&hadc1));
+		  }
 	  }
+
 	  if(HAL_GetTick()-lastTick2>=periodo2){
-	  lastTick2=HAL_GetTick();
-	  //tarea2(&v);
+		  lastTick2=HAL_GetTick();
+		  imprimir_estado(&v);
 	  }
 	  if(HAL_GetTick()-lastTick3>=periodo3){
 	  lastTick3=HAL_GetTick();
-	  //tarea3(&v);
+	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == GPIO_PIN_RESET){
+		  var_ack_alarm(&v);
+	  }
 	  }
 
 
@@ -242,7 +246,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -262,51 +266,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM3_Init(void)
-{
-
-  /* USER CODE BEGIN TIM3_Init 0 */
-
-  /* USER CODE END TIM3_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM3_Init 1 */
-
-  /* USER CODE END TIM3_Init 1 */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 7199;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 999;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_ENABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM3_Init 2 */
-
-  /* USER CODE END TIM3_Init 2 */
 
 }
 
