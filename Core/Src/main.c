@@ -134,7 +134,7 @@ int main(void)
   //HAL_TIM_Base_Start(&htim3);
   var_t v;
   var_init(&v, 3000, 4000, 1000);
-
+  int flag = 1;
   uint32_t lastTick1 = 0;
   uint32_t lastTick2 = 0;
   uint32_t lastTick3 = 0;
@@ -150,6 +150,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (flag == 1){
+		  HAL_Delay(3000);
+		  flag = 0;
+	  }
 
 	  if(HAL_GetTick()-lastTick1>=periodo1){
  		  lastTick1=HAL_GetTick();
