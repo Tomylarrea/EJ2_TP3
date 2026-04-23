@@ -131,6 +131,13 @@ int main(void)
   char buffer[10];
   var_t v;
   var_init(&v, 3000, 4000, 1000);
+
+  uint32_t lastTick1 = 0;
+  uint32_t lastTick2 = 0;
+  uint32_t lastTick3 = 0;
+  uint32_t periodo1 = 0;
+  uint32_t periodo2 = 0;
+  uint32_t periodo3 = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,59 +153,20 @@ int main(void)
 		  flag = 0;
 	  }
 
+	  if(HAL_GetTick()-lastTick1>=periodo1){
+	  lastTick1=HAL_GetTick();
+	  //tarea1(&v);
+	  }
+	  if(HAL_GetTick()-lastTick2>=periodo2){
+	  lastTick2=HAL_GetTick();
+	  //tarea2(&v);
+	  }
+	  if(HAL_GetTick()-lastTick3>=periodo3){
+	  lastTick3=HAL_GetTick();
+	  //tarea3(&v);
+	  }
 
 
-		HAL_Delay(1000);
-		HAL_UART_Transmit(&huart1, (uint8_t*)"El conteo empieza en 3 segundos:\r\n", 34, 100);
-		HAL_Delay(3000);
-
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 4500);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 3000);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 500);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 3000);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_ack_alarm(&v);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 4500);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 500);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 3000);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 4500);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-		var_set_val(&v, 3000);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
-
-
-		var_ack_alarm(&v);
-		imprimir_estado(&v);
-		HAL_Delay(1000);
 
   }
   /* USER CODE END 3 */
