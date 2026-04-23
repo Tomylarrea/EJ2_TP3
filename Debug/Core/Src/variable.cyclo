@@ -1,0 +1,6 @@
+../Core/Src/variable.c:17:17:fsm_alarma	24
+../Core/Src/variable.c:73:17:iniciar_fsm	5
+../Core/Src/variable.c:88:7:var_init	1
+../Core/Src/variable.c:95:7:var_set_val	1
+../Core/Src/variable.c:100:7:var_ack_alarm	1
+../Core/Src/variable.c:104:11:var_get_state	1

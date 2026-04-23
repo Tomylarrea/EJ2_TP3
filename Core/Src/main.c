@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "variable.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,7 +63,34 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t dato;
+volatile uint8_t flag = 0;
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	if(hadc->Instance == ADC1){
+		dato = HAL_ADC_GetValue(hadc);
+		flag = 1;
+	}
+}
 
+
+void imprimir_estado(var_t* variable){
+	  switch(var_get_state(variable)){
+	  case VAR_NORMAL:
+		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_NORMAL\r\n", 12, 100);
+		  break;
+	  case VAR_LO:
+		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_LO\r\n", 8, 100);
+		  break;
+	  case VAR_HI:
+		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_HI\r\n", 8, 100);
+		  break;
+	  case VAR_WAITING_ACK:
+		  HAL_UART_Transmit(&huart1, (uint8_t*)"VAR_WAITING_ACK\r\n", 17, 100);
+		  break;
+	  default: break;
+	  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -98,7 +126,11 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  //HAL_ADC_Start_IT(&hadc1);
+  //HAL_TIM_Base_Start(&htim3);
+  char buffer[10];
+  var_t v;
+  var_init(&v, 3000, 4000, 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,6 +140,66 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (flag == 1){
+		  sprintf(buffer, "%d\r\n", dato);
+		  HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 100);
+		  flag = 0;
+	  }
+
+
+
+		HAL_Delay(1000);
+		HAL_UART_Transmit(&huart1, (uint8_t*)"El conteo empieza en 3 segundos:\r\n", 34, 100);
+		HAL_Delay(3000);
+
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 4500);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 3000);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 500);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 3000);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_ack_alarm(&v);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 4500);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 500);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 3000);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 4500);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+		var_set_val(&v, 3000);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
+
+		var_ack_alarm(&v);
+		imprimir_estado(&v);
+		HAL_Delay(1000);
+
   }
   /* USER CODE END 3 */
 }
@@ -302,7 +394,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
